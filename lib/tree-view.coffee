@@ -323,7 +323,9 @@ class TreeView extends View
 
   copySelectedEntryPath: (relativePath = false) ->
     if pathToCopy = @selectedPath
-      pathToCopy = atom.project.relativize(pathToCopy) if relativePath
+      if relativePath
+        relativizedPath = atom.project.relativize(pathToCopy)
+        pathToCopy = relativizedPath if relativizedPath?
       atom.clipboard.write(pathToCopy)
 
   entryForPath: (entryPath) ->
