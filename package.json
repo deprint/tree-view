@@ -28,6 +28,13 @@
       }
     }
   },
+  "providedServices": {
+    "tree-view": {
+      "versions": {
+        "1.0.0": "provideTreeView"
+      }
+    }
+  },
   "configSchema": {
     "squashDirectoryNames": {
       "type": "boolean",

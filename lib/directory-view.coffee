@@ -2,6 +2,7 @@
 Directory = require './directory'
 FileView = require './file-view'
 {repoForPath} = require './helpers'
+Service = require './service'
 
 class DirectoryView extends HTMLElement
   initialize: (@directory) ->
@@ -83,7 +84,20 @@ class DirectoryView extends HTMLElement
   isPathEqual: (pathToCompare) ->
     @directory.isPathEqual(pathToCompare)
 
+  isCustom: ->
+    false
+
+  isDirectory: ->
+    true
+
+  hasEntries: ->
+    @directory.getEntries().length > 0
+
   createViewForEntry: (entry) ->
+    if (view = Service.getViewFromProvider(entry, @directory))?
+      Service.addedEntry this, view, entry
+      return view
+
     if entry instanceof Directory
       view = new DirectoryElement()
     else
@@ -97,6 +111,9 @@ class DirectoryView extends HTMLElement
         break
     @subscriptions.add(subscription)
 
+    Service.addedFSEntry this, view, entry
+    Service.addedEntry this, view, entry
+
     view
 
   reload: ->
@@ -106,6 +123,8 @@ class DirectoryView extends HTMLElement
     if @isExpanded then @collapse(isRecursive) else @expand(isRecursive)
 
   expand: (isRecursive=false) ->
+    Service.expandDirectory this, isRecursive
+
     unless @isExpanded
       @isExpanded = true
       @classList.add('expanded')
@@ -119,6 +138,7 @@ class DirectoryView extends HTMLElement
     false
 
   collapse: (isRecursive=false) ->
+
     @isExpanded = false
 
     if isRecursive
@@ -128,6 +148,7 @@ class DirectoryView extends HTMLElement
     @classList.remove('expanded')
     @classList.add('collapsed')
     @directory.collapse()
+    Service.collapsedDirectory this, isRecursive
     @entries.innerHTML = ''
 
 DirectoryElement = document.registerElement('tree-view-directory', prototype: DirectoryView.prototype, extends: 'li')

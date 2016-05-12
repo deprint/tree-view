@@ -30,6 +30,12 @@ class File
     @subscriptions.dispose()
     @emitter.emit('did-destroy')
 
+  isCustom: ->
+    false
+
+  isDirectory: ->
+    false
+
   onDidDestroy: (callback) ->
     @emitter.on('did-destroy', callback)
 

@@ -42,6 +42,12 @@ class Directory
     @subscriptions.dispose()
     @emitter.emit('did-destroy')
 
+  isCustom: ->
+    false
+
+  isDirectory: ->
+    true
+
   onDidDestroy: (callback) ->
     @emitter.on('did-destroy', callback)
 
@@ -53,6 +59,9 @@ class Directory
 
   onDidRemoveEntries: (callback) ->
     @emitter.on('did-remove-entries', callback)
+
+  onDoesSerialize: (callback) ->
+    @emitter.on('does-serialize', callback)
 
   loadRealPath: ->
     if @useSyncFS
@@ -178,7 +187,7 @@ class Directory
       symlink = stat.isSymbolicLink?()
       stat = fs.statSyncNoException(fullPath) if symlink
 
-      if stat.isDirectory?()
+      if stat.isDirectory()
         if @entries.hasOwnProperty(name)
           # push a placeholder since this entry already exists but this helps
           # track the insertion index for the created views
@@ -265,6 +274,7 @@ class Directory
     expansionState.entries = {}
     for name, entry of @entries when entry.expansionState?
       expansionState.entries[name] = entry.serializeExpansionState()
+    @emitter.emit('does-serialize', expansionState)
     expansionState
 
   squashDirectoryNames: (fullPath) ->

@@ -28,6 +28,12 @@ class FileView extends HTMLElement
     @classList.remove('status-ignored', 'status-modified',  'status-added')
     @classList.add("status-#{@file.status}") if @file.status?
 
+  isCustom: ->
+    false
+
+  isDirectory: ->
+    false
+
   getPath: ->
     @fileName.dataset.path
 

@@ -2,6 +2,7 @@
 path = require 'path'
 
 FileIcons = require './file-icons'
+Service = require './service'
 
 module.exports =
   treeView: null
@@ -26,6 +27,7 @@ module.exports =
     })
 
   deactivate: ->
+    Service.deactivate()
     @disposables.dispose()
     @fileIconsDisposable?.dispose()
     @treeView?.deactivate()
@@ -37,6 +39,13 @@ module.exports =
       FileIcons.resetService()
       @treeView?.updateRoots()
     @treeView?.updateRoots()
+
+  provideTreeView: ->
+    getView: @createView.bind(this)
+    onWillAddEntry: Service.onWillAddEntry.bind(Service)
+    onWillAddFSEntry: Service.onWillAddFSEntry.bind(Service)
+    onDidCollapseDirectory: Service.onDidCollapseDirectory.bind(Service)
+    addEntryProvider: Service.addEntryProvider.bind(Service)
 
   serialize: ->
     if @treeView?

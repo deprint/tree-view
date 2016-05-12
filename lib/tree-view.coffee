@@ -204,6 +204,14 @@ class TreeView extends View
     entry = e.currentTarget
     isRecursive = e.altKey or false
     @selectEntry(entry)
+
+    if entry.isCustom()
+      if entry.isDirectory()
+        entry.toggleExpansion(isRecursive)
+      else
+        entry.click(e.originalEvent?.detail ? 1)
+      return false
+
     if entry instanceof DirectoryView
       entry.toggleExpansion(isRecursive)
       return false
@@ -340,7 +348,7 @@ class TreeView extends View
     event?.stopImmediatePropagation()
     selectedEntry = @selectedEntry()
     if selectedEntry?
-      if selectedEntry instanceof DirectoryView
+      if selectedEntry instanceof DirectoryView or selectedEntry?.isDirectory()
         if @selectEntry(selectedEntry.entries.children[0])
           @scrollToEntry(@selectedEntry())
           return
@@ -360,7 +368,7 @@ class TreeView extends View
     if selectedEntry?
       selectedEntry = $(selectedEntry)
       if previousEntry = @selectEntry(selectedEntry.prev('.entry')[0])
-        if previousEntry instanceof DirectoryView
+        if previousEntry instanceof DirectoryView or previousEntry?.isDirectory()
           @selectEntry(_.last(previousEntry.entries.children))
       else
         @selectEntry(selectedEntry.parents('.directory').first()?[0])
@@ -372,7 +380,7 @@ class TreeView extends View
   expandDirectory: (isRecursive=false) ->
     selectedEntry = @selectedEntry()
     if isRecursive is false and selectedEntry.isExpanded
-      @moveDown() if selectedEntry.directory.getEntries().length > 0
+      @moveDown() if selectedEntry.hasEntries()
     else
       selectedEntry.expand(isRecursive)
 
@@ -386,7 +394,7 @@ class TreeView extends View
 
   openSelectedEntry: (options={}, expandDirectory=false) ->
     selectedEntry = @selectedEntry()
-    if selectedEntry instanceof DirectoryView
+    if selectedEntry instanceof DirectoryView or selectedEntry?.isDirectory()
       if expandDirectory
         @expandDirectory(false)
       else
@@ -402,9 +410,12 @@ class TreeView extends View
         options = Object.assign searchAllPanes: true, options
 
       atom.workspace.open(uri, options)
+    else
+      selectedEntry?.click()
 
   openSelectedEntrySplit: (orientation, side) ->
     selectedEntry = @selectedEntry()
+    return if selectedEntry?.isCustom()
     pane = atom.workspace.getActivePane()
     if pane and selectedEntry instanceof FileView
       if atom.workspace.getActivePaneItem()
@@ -427,13 +438,15 @@ class TreeView extends View
 
   openSelectedEntryInPane: (index) ->
     selectedEntry = @selectedEntry()
+    return if selectedEntry?.isCustom()
     pane = atom.workspace.getPanes()[index]
     if pane and selectedEntry instanceof FileView
       atom.workspace.openURIInPane selectedEntry.getPath(), pane
 
   moveSelectedEntry: ->
+    entry = @selectedEntry()
+    return if entry?.isCustom()
     if @hasFocus()
-      entry = @selectedEntry()
       return if not entry? or entry in @roots
       oldPath = entry.getPath()
     else
@@ -481,6 +494,7 @@ class TreeView extends View
   showSelectedEntryInFileManager: ->
     entry = @selectedEntry()
     return unless entry
+    return if entry.isCustom()
 
     isFile = entry instanceof FileView
     {command, args, label} = @fileManagerCommandForPath(entry.getPath(), isFile)
@@ -508,14 +522,19 @@ class TreeView extends View
       handleError(error?.message)
 
   openSelectedEntryInNewWindow: ->
-    if pathToOpen = @selectedEntry()?.getPath()
+    entry = @selectedEntry()
+    return unless entry?
+    return if entry.isCustom()
+    if pathToOpen = entry.getPath()
       atom.open({pathsToOpen: [pathToOpen], newWindow: true})
 
   copySelectedEntry: ->
+    entry = @selectedEntry()
+    return unless entry?
+    return if entry.isCustom()
     if @hasFocus()
-      entry = @selectedEntry()
       return if entry in @roots
-      oldPath = entry?.getPath()
+      oldPath = entry.getPath()
     else
       oldPath = @getActivePath()
     return unless oldPath
@@ -590,6 +609,7 @@ class TreeView extends View
   # Returns `destination newPath`.
   pasteEntries: ->
     selectedEntry = @selectedEntry()
+    return if selectedEntry?.isCustom()
     cutPaths = if LocalStorage['tree-view:cutPath'] then JSON.parse(LocalStorage['tree-view:cutPath']) else null
     copiedPaths = if LocalStorage['tree-view:copyPath'] then JSON.parse(LocalStorage['tree-view:copyPath']) else null
     initialPaths = copiedPaths or cutPaths
@@ -633,7 +653,9 @@ class TreeView extends View
             catchAndShowFileErrors -> fs.moveSync(initialPath, newPath)
 
   add: (isCreatingFile) ->
-    selectedEntry = @selectedEntry() ? @roots[0]
+    selectedEntry = @selectedEntry()
+    return if selectedEntry?.isCustom()
+    selectedEntry ?= @roots[0]
     selectedPath = selectedEntry?.getPath() ? ''
 
     AddDialog ?= require './add-dialog'
@@ -663,16 +685,18 @@ class TreeView extends View
 
     @selectedPath = entry.getPath()
 
-    selectedEntries = @getSelectedEntries()
+    selectedEntries = @getSelectedEntries(true)
     if selectedEntries.length > 1 or selectedEntries[0] isnt entry
       @deselect(selectedEntries)
       entry.classList.add('selected')
     entry
 
-  getSelectedEntries: ->
-    @list[0].querySelectorAll('.selected')
+  getSelectedEntries: (includeCustom = false) ->
+    selectedItems = @list[0].querySelectorAll('.selected')
+    return selectedItems if includeCustom
+    Array.prototype.slice.call(selectedItems).filter (e) -> not e.isCustom()
 
-  deselect: (elementsToDeselect=@getSelectedEntries()) ->
+  deselect: (elementsToDeselect=@getSelectedEntries(true)) ->
     selected.classList.remove('selected') for selected in elementsToDeselect
     undefined
 
@@ -689,7 +713,7 @@ class TreeView extends View
       @scroller.scrollBottom()
 
   scrollToEntry: (entry) ->
-    element = if entry instanceof DirectoryView then entry.header else entry
+    element = if entry instanceof DirectoryView or entry?.isDirectory() then entry.header else entry
     element?.scrollIntoViewIfNeeded(true) # true = center around item if possible
 
   scrollToBottom: ->
