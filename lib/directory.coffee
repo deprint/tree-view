@@ -187,7 +187,7 @@ class Directory
       symlink = stat.isSymbolicLink?()
       stat = fs.statSyncNoException(fullPath) if symlink
 
-      if stat.isDirectory()
+      if stat.isDirectory?()
         if @entries.hasOwnProperty(name)
           # push a placeholder since this entry already exists but this helps
           # track the insertion index for the created views
